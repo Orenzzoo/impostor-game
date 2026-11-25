@@ -13,24 +13,51 @@
 <body>
   <div class="app">
     <header class="top">
-      <div class="brand">
+      <button id="homeBtn" class="brand" aria-label="Back to the game menu">
         <svg viewBox="0 0 24 24" class="ico"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
         <span>Impostor</span>
-      </div>
+      </button>
       <button id="soundBtn" class="icon-btn" aria-label="Toggle sound">
         <svg viewBox="0 0 24 24" class="ico i-on"><path d="M11 5 6 9H2v6h4l5 4V5z"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
         <svg viewBox="0 0 24 24" class="ico i-off"><path d="M11 5 6 9H2v6h4l5 4V5z"/><path d="m22 9-6 6"/><path d="m16 9 6 6"/></svg>
       </button>
     </header>
 
-    <!-- Player count, first thing on load -->
-    <section id="count" class="screen active">
+    <!-- Game picker, first thing on load -->
+    <section id="home" class="screen active">
       <div class="hero">
-        <h1>Who's lying?</h1>
-        <p>Pass the phone around. Each player spins and gets a secret role. Nobody sees anyone else's.</p>
+        <h1>Pick a game</h1>
+        <p>One phone, passed around. No host, no paper.</p>
+      </div>
+      <button class="mode-card" data-mode="word">
+        <span class="mode-icon">
+          <svg viewBox="0 0 24 24" class="ico"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+        </span>
+        <span>
+          <h2>Word Impostor</h2>
+          <p>Everyone gets the same secret word except the impostor. Give clues and find the faker.</p>
+        </span>
+      </button>
+      <button class="mode-card" data-mode="mafia">
+        <span class="mode-icon night-icon">
+          <svg viewBox="0 0 24 24" class="ico"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+        </span>
+        <span>
+          <h2>Role Play Mafia</h2>
+          <p>Mafia, Doctor, Detective and Civilians. The phone runs the night out loud, so nobody has to host.</p>
+        </span>
+      </button>
+    </section>
+
+    <!-- Player count -->
+    <section id="count" class="screen">
+      <div class="hero">
+        <button id="backToHome" class="btn btn-link back">&larr; Games</button>
+        <h1 id="countTitle">Word Impostor</h1>
+        <p>How many people are playing this round?</p>
       </div>
       <div class="card count-card">
-        <span class="label">How many players this round?</span>
+        <span class="label">Players</span>
         <div class="count-picker">
           <button id="countMinus" class="count-btn" aria-label="Fewer players">&minus;</button>
           <div class="count-num" id="countNum">4</div>
@@ -45,6 +72,7 @@
     <section id="setup" class="screen">
       <div class="hero">
         <button id="backToCount" class="btn btn-link back">&larr; Player count</button>
+        <span class="label" id="setupMode"></span>
         <h1>Set up the round</h1>
         <p>Add names so the phone tells you who to pass it to. Blank ones become "Player 1", "Player 2"...</p>
       </div>
@@ -58,7 +86,7 @@
         <button id="addPlayer" class="btn btn-ghost btn-sm">+ Add player</button>
       </div>
 
-      <div class="card">
+      <div class="card" id="wordOpts">
         <div class="row">
           <div>
             <h2>Impostors</h2>
@@ -80,6 +108,47 @@
         </div>
       </div>
 
+      <div class="card" id="mafiaOpts">
+        <div class="row">
+          <div>
+            <h2>Mafia</h2>
+            <p class="hint">Up to <span id="mafMax">1</span> for this many players</p>
+          </div>
+          <div class="stepper">
+            <button id="mafMinus" aria-label="Fewer Mafia">&minus;</button>
+            <span id="mafCount">1</span>
+            <button id="mafPlus" aria-label="More Mafia">+</button>
+          </div>
+        </div>
+        <div class="divider"></div>
+        <label class="row">
+          <div>
+            <h2>Doctor</h2>
+            <p class="hint">Saves one person each night</p>
+          </div>
+          <input type="checkbox" id="docToggle" class="switch">
+        </label>
+        <div class="divider"></div>
+        <label class="row">
+          <div>
+            <h2>Detective</h2>
+            <p class="hint">Checks one person each night</p>
+          </div>
+          <input type="checkbox" id="detToggle" class="switch">
+        </label>
+        <div class="divider"></div>
+        <label class="row">
+          <div>
+            <h2>Jester</h2>
+            <p class="hint">Wins by getting voted out</p>
+          </div>
+          <input type="checkbox" id="jesToggle" class="switch">
+        </label>
+        <div class="divider"></div>
+        <p class="summary" id="mafSummary"></p>
+      </div>
+
+      <p class="error" id="setupError" hidden></p>
       <button id="startBtn" class="btn btn-primary btn-lg">Start game</button>
     </section>
 
@@ -126,7 +195,7 @@
       <button class="btn btn-link quit">End round</button>
     </section>
 
-    <!-- Play -->
+    <!-- Word Impostor: play -->
     <section id="play" class="screen">
       <div class="center-text">
         <span class="label">Everyone has a role</span>
@@ -151,7 +220,7 @@
       <button class="btn btn-link quit">End round</button>
     </section>
 
-    <!-- Result -->
+    <!-- Word Impostor: result -->
     <section id="result" class="screen">
       <div class="center-text">
         <span class="label" id="resultLabel">The impostor was</span>
@@ -165,9 +234,109 @@
       <button id="againBtn" class="btn btn-primary btn-lg">New round</button>
       <button id="editBtn" class="btn btn-ghost">Change players</button>
     </section>
+
+    <!-- Mafia: before the first night -->
+    <section id="mIntro" class="screen">
+      <div class="center-text">
+        <span class="label">Everyone has a role</span>
+        <h1>Get ready</h1>
+      </div>
+      <div class="card">
+        <ol class="rules">
+          <li>Put the phone in the middle with the volume up. It reads every step out loud.</li>
+          <li>At night, keep your eyes shut until the phone calls your role.</li>
+          <li>On your turn, open your eyes, tap a name, confirm, and close them again.</li>
+          <li>No talking at night. In the day, discuss and vote someone out.</li>
+        </ol>
+      </div>
+      <button id="introStart" class="btn btn-primary btn-lg">Start the first night</button>
+      <button class="btn btn-link quit">End game</button>
+    </section>
+
+    <!-- Mafia: narration between steps -->
+    <section id="mNarrate" class="screen">
+      <div class="narrate">
+        <svg viewBox="0 0 24 24" class="ico moon"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+        <p id="narrateText"></p>
+      </div>
+    </section>
+
+    <!-- Mafia: a role's turn at night -->
+    <section id="mNight" class="screen">
+      <div class="center-text">
+        <span class="label">Night</span>
+        <h1 id="nightTitle"></h1>
+        <p id="nightAsk"></p>
+      </div>
+      <div id="nightList" class="pick-list"></div>
+      <div id="nightResult" class="check" hidden></div>
+      <button id="nightConfirm" class="btn btn-primary btn-lg">Pick someone</button>
+    </section>
+
+    <!-- Mafia: day -->
+    <section id="mDay" class="screen">
+      <div class="center-text">
+        <span class="label">Morning</span>
+        <h1 id="dayTitle"></h1>
+        <p id="dayMsg" class="day-msg"></p>
+      </div>
+      <div class="card timer-card">
+        <span class="label">Discussion</span>
+        <div id="timerText" class="timer">2:00</div>
+        <div class="timer-actions">
+          <button id="timerBtn" class="btn btn-ghost">Start timer</button>
+          <button id="timerAdd" class="btn btn-ghost">+30s</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-head"><h2>Players</h2></div>
+        <div id="dayRoster" class="roster"></div>
+      </div>
+      <button id="toVote" class="btn btn-primary btn-lg">Go to the vote</button>
+      <button class="btn btn-link quit">End game</button>
+    </section>
+
+    <!-- Mafia: vote -->
+    <section id="mVote" class="screen">
+      <div class="center-text">
+        <span class="label">The vote</span>
+        <h1>Who's out?</h1>
+        <p>Vote together, then tap the player the town chose.</p>
+      </div>
+      <div id="voteList" class="pick-list"></div>
+      <button id="voteConfirm" class="btn btn-primary btn-lg">Pick someone</button>
+      <button class="btn btn-link quit">End game</button>
+    </section>
+
+    <!-- Mafia: vote result -->
+    <section id="mVerdict" class="screen">
+      <div class="verdict">
+        <h1 id="verdictTitle"></h1>
+        <p id="verdictSub" class="verdict-sub"></p>
+      </div>
+      <button id="verdictNext" class="btn btn-primary btn-lg">Start the next night</button>
+      <button class="btn btn-link quit">End game</button>
+    </section>
+
+    <!-- Mafia: game over -->
+    <section id="mOver" class="screen">
+      <div class="center-text">
+        <span class="label">Game over</span>
+        <h1 id="overTitle" class="over-title"></h1>
+        <p id="overWhy"></p>
+      </div>
+      <div class="card">
+        <div class="card-head"><h2>Who was who</h2></div>
+        <div id="overRoster" class="roster"></div>
+      </div>
+      <button id="overAgain" class="btn btn-primary btn-lg">Play again</button>
+      <button id="overMenu" class="btn btn-ghost">Main menu</button>
+    </section>
   </div>
 
+  <script src="core.js"></script>
   <script src="words.js"></script>
+  <script src="mafia.js"></script>
   <script src="game.js"></script>
 </body>
 </html>

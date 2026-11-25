@@ -1,111 +1,86 @@
+// Menu, setup, role dealing (wheel + hold-to-reveal) and the Word Impostor round.
+// Role Play Mafia's night/day loop lives in mafia.js.
 ;(() => {
   'use strict'
 
-  const $ = (sel) => document.querySelector(sel)
-  const MIN_PLAYERS = 3
-  const MAX_PLAYERS = 20
-  const SEGMENTS = 12
-  const STORE_KEY = 'impostor-game-v1'
+  const App = window.App
+  const { $, el, rand, shuffle, show, state, save, load, audio, tick, thud, MIN_PLAYERS, MAX_PLAYERS } = App
   const CATEGORIES = window.CATEGORIES
+  const Mafia = window.Mafia
 
-  const state = {
-    players: ['', '', '', ''],
-    impostors: 1,
-    category: 'random',
-    sound: true,
-    // Per-round
-    names: [],
-    impostorSet: new Set(),
-    word: '',
-    wordCategory: '',
-    turn: 0,
-    starter: 0,
-    used: {},
-    rotation: 0,
-    spinning: false
-  }
+  const SEGMENTS = 12
+  const MODE_NAMES = { word: 'Word Impostor', mafia: 'Role Play Mafia' }
+  // Leaving these screens doesn't lose a game in progress, so no confirm needed
+  const SAFE_SCREENS = ['home', 'count', 'setup', 'result', 'mOver']
 
-  // ---------- Helpers ----------
-  function rand(n) {
-    const a = new Uint32Array(1)
-    crypto.getRandomValues(a)
-    return a[0] % n
-  }
-
-  function shuffle(arr) {
-    for (let i = arr.length - 1; i > 0; i--) {
-      const j = rand(i + 1)
-      ;[arr[i], arr[j]] = [arr[j], arr[i]]
-    }
-    return arr
-  }
-
-  function el(tag, cls, text) {
-    const e = document.createElement(tag)
-    if (cls) e.className = cls
-    if (text != null) e.textContent = text
-    return e
-  }
-
-  function show(id) {
-    document.querySelectorAll('.screen').forEach((s) => s.classList.toggle('active', s.id === id))
-    window.scrollTo(0, 0)
-  }
-
-  function load() {
-    try {
-      const s = JSON.parse(localStorage.getItem(STORE_KEY))
-      if (!s) return
-      if (Array.isArray(s.players) && s.players.length >= MIN_PLAYERS) state.players = s.players.slice(0, MAX_PLAYERS)
-      if (Number.isInteger(s.impostors)) state.impostors = s.impostors
-      if (s.category === 'random' || CATEGORIES[s.category]) state.category = s.category
-      if (typeof s.sound === 'boolean') state.sound = s.sound
-    } catch { /* storage blocked, use defaults */ }
-  }
-
-  function save() {
-    try {
-      const { players, impostors, category, sound } = state
-      localStorage.setItem(STORE_KEY, JSON.stringify({ players, impostors, category, sound }))
-    } catch { /* ignore */ }
-  }
-
-  // ---------- Sound ----------
-  // Sounds are the same for every role so nobody can tell by ear.
-  let ctx
-  function audio() {
-    if (!state.sound) return null
-    try {
-      ctx = ctx || new (window.AudioContext || window.webkitAudioContext)()
-      if (ctx.state === 'suspended') ctx.resume()
-      return ctx
-    } catch { return null }
-  }
-
-  function beep(freq, len, vol, type) {
-    const a = audio()
-    if (!a) return
-    const o = a.createOscillator()
-    const g = a.createGain()
-    o.type = type
-    o.frequency.value = freq
-    g.gain.setValueAtTime(vol, a.currentTime)
-    g.gain.exponentialRampToValueAtTime(0.0001, a.currentTime + len)
-    o.connect(g).connect(a.destination)
-    o.start()
-    o.stop(a.currentTime + len + 0.02)
-  }
-
-  const tick = () => beep(1500, 0.035, 0.06, 'triangle')
-  const thud = () => { beep(140, 0.35, 0.25, 'sine'); beep(70, 0.5, 0.2, 'sine') }
+  const round = { word: '', wordCategory: '', starter: 0, used: {}, rotation: 0, spinning: false }
 
   function renderSound() {
     $('#soundBtn').classList.toggle('muted', !state.sound)
   }
 
+  // ---------- Menu ----------
+  function pickMode(mode) {
+    state.mode = mode
+    save()
+    $('#countTitle').textContent = MODE_NAMES[mode]
+    setCount(state.players.length)
+    show('count')
+  }
+
+  function goHome() {
+    const active = document.querySelector('.screen.active').id
+    if (!SAFE_SCREENS.includes(active) && !confirm('Leave this game and go back to the menu?')) return
+    Mafia.stop()
+    show('home')
+  }
+
+  // ---------- Player count ----------
+  let pickedCount = 4
+
+  function renderCount() {
+    const num = $('#countNum')
+    num.textContent = pickedCount
+    num.classList.remove('bump')
+    void num.offsetWidth
+    num.classList.add('bump')
+    $('#countMinus').disabled = pickedCount <= MIN_PLAYERS
+    $('#countPlus').disabled = pickedCount >= MAX_PLAYERS
+    $('#countChips').querySelectorAll('button').forEach((b) =>
+      b.classList.toggle('on', Number(b.dataset.n) === pickedCount))
+  }
+
+  function setCount(n) {
+    pickedCount = Math.min(MAX_PLAYERS, Math.max(MIN_PLAYERS, n))
+    renderCount()
+  }
+
+  function buildCountChips() {
+    const chips = $('#countChips')
+    for (let n = 3; n <= 12; n++) {
+      const b = el('button', '', n)
+      b.dataset.n = n
+      b.addEventListener('click', () => setCount(n))
+      chips.append(b)
+    }
+  }
+
+  // Saved names are kept and trimmed or padded to the picked count
+  function confirmCount() {
+    const p = state.players
+    if (p.length > pickedCount) p.length = pickedCount
+    while (p.length < pickedCount) p.push('')
+    save()
+    showSetup()
+  }
+
   // ---------- Setup ----------
-  function maxImpostors() {
-    return Math.max(1, Math.floor((state.players.length - 1) / 2))
+  function showSetup() {
+    $('#setupMode').textContent = MODE_NAMES[state.mode]
+    $('#wordOpts').hidden = state.mode !== 'word'
+    $('#mafiaOpts').hidden = state.mode !== 'mafia'
+    renderPlayers()
+    show('setup')
   }
 
   function renderPlayers() {
@@ -146,6 +121,7 @@
     $('#playerCount').textContent = state.players.length
     $('#addPlayer').disabled = state.players.length >= MAX_PLAYERS
     renderImpostors()
+    renderMafiaOpts()
   }
 
   function addPlayer() {
@@ -154,6 +130,10 @@
     renderPlayers()
     const inputs = $('#playerList').querySelectorAll('input')
     inputs[inputs.length - 1].focus()
+  }
+
+  function maxImpostors() {
+    return Math.max(1, Math.floor((state.players.length - 1) / 2))
   }
 
   function renderImpostors() {
@@ -166,7 +146,36 @@
     save()
   }
 
-  function renderOptions() {
+  function renderMafiaOpts() {
+    const n = state.players.length
+    const max = Mafia.maxMafia(n)
+    state.mafiaCount = Math.min(Math.max(1, state.mafiaCount), max)
+    $('#mafCount').textContent = state.mafiaCount
+    $('#mafMax').textContent = max
+    $('#mafMinus').disabled = state.mafiaCount <= 1
+    $('#mafPlus').disabled = state.mafiaCount >= max
+    $('#docToggle').checked = state.doctor
+    $('#detToggle').checked = state.detective
+    $('#jesToggle').checked = state.jester
+
+    const civilians = n - Mafia.specialCount()
+    $('#mafSummary').textContent = [
+      `${state.mafiaCount} Mafia`,
+      state.doctor && '1 Doctor',
+      state.detective && '1 Detective',
+      state.jester && '1 Jester',
+      `${Math.max(0, civilians)} Civilian${civilians === 1 ? '' : 's'}`
+    ].filter(Boolean).join(' · ')
+
+    const tooMany = state.mode === 'mafia' && civilians < 0
+    const err = $('#setupError')
+    err.hidden = !tooMany
+    err.textContent = tooMany ? `Too many roles for ${n} players. Turn one off or add players.` : ''
+    $('#startBtn').disabled = tooMany
+    save()
+  }
+
+  function renderCategories() {
     const sel = $('#categorySelect')
     sel.innerHTML = ''
     sel.append(new Option('Random', 'random'))
@@ -174,51 +183,11 @@
     sel.value = state.category
   }
 
-  // ---------- Player count ----------
-  // Asked first on every load; saved names are kept and trimmed or padded to fit.
-  let pickedCount = 4
-
-  function renderCount() {
-    const num = $('#countNum')
-    num.textContent = pickedCount
-    num.classList.remove('bump')
-    void num.offsetWidth
-    num.classList.add('bump')
-    $('#countMinus').disabled = pickedCount <= MIN_PLAYERS
-    $('#countPlus').disabled = pickedCount >= MAX_PLAYERS
-    $('#countChips').querySelectorAll('button').forEach((b) =>
-      b.classList.toggle('on', Number(b.dataset.n) === pickedCount))
-  }
-
-  function setCount(n) {
-    pickedCount = Math.min(MAX_PLAYERS, Math.max(MIN_PLAYERS, n))
-    renderCount()
-  }
-
-  function buildCountChips() {
-    const chips = $('#countChips')
-    for (let n = 3; n <= 12; n++) {
-      const b = el('button', '', n)
-      b.dataset.n = n
-      b.addEventListener('click', () => setCount(n))
-      chips.append(b)
-    }
-  }
-
-  function confirmCount() {
-    const p = state.players
-    if (p.length > pickedCount) p.length = pickedCount
-    while (p.length < pickedCount) p.push('')
-    save()
-    renderPlayers()
-    show('setup')
-  }
-
   // ---------- Round ----------
   function pickWord() {
     const keys = Object.keys(CATEGORIES)
     const category = state.category === 'random' ? keys[rand(keys.length)] : state.category
-    const used = state.used[category] || (state.used[category] = [])
+    const used = round.used[category] || (round.used[category] = [])
     let pool = CATEGORIES[category].filter((w) => !used.includes(w))
     if (!pool.length) {
       used.length = 0
@@ -229,23 +198,30 @@
     return { category, word }
   }
 
+  // Roles are dealt up front so the counts are always exact.
+  // The wheel is only for show; it never decides anything.
   function startRound() {
     const n = state.players.length
     state.names = state.players.map((p, i) => p.trim() || `Player ${i + 1}`)
-    // Roles are dealt up front so the impostor count is always exact.
-    // The wheel is only for show; it never decides anything.
-    const order = shuffle([...Array(n).keys()])
-    state.impostorSet = new Set(order.slice(0, state.impostors))
-    const { category, word } = pickWord()
-    state.word = word
-    state.wordCategory = category
-    state.starter = rand(n)
+    Mafia.stop()
+    if (state.mode === 'mafia') {
+      state.roles = Mafia.deal(n)
+    } else {
+      const imps = new Set(shuffle([...Array(n).keys()]).slice(0, state.impostors))
+      state.roles = state.names.map((_, i) => (imps.has(i) ? 'impostor' : 'regular'))
+      const { category, word } = pickWord()
+      round.word = word
+      round.wordCategory = category
+      round.starter = rand(n)
+    }
     state.turn = 0
     showTurn()
   }
 
   function quitRound() {
-    if (confirm('End this round? Roles will be dealt again next time.')) show('setup')
+    if (!confirm('End this game? Roles will be dealt again next time.')) return
+    Mafia.stop()
+    showSetup()
   }
 
   // ---------- Wheel ----------
@@ -299,8 +275,8 @@
   }
 
   function spin() {
-    if (state.spinning) return
-    state.spinning = true
+    if (round.spinning) return
+    round.spinning = true
     audio()
     const btn = $('#spinBtn')
     btn.disabled = true
@@ -309,7 +285,7 @@
     $('#wheelWrap').classList.add('spinning')
 
     const rot = $('#wheelRot')
-    const start = state.rotation
+    const start = round.rotation
     const delta = 360 * 5 + rand(360)
     const duration = 3600 + rand(900)
     const segSize = 360 / SEGMENTS
@@ -329,8 +305,8 @@
       }
       if (p < 1) return requestAnimationFrame(frame)
 
-      state.rotation = angle % 360
-      state.spinning = false
+      round.rotation = angle % 360
+      round.spinning = false
       $('#wheelWrap').classList.remove('spinning')
       thud()
       if (navigator.vibrate) navigator.vibrate(40)
@@ -340,29 +316,33 @@
   }
 
   // ---------- Reveal ----------
+  function cardFor(i) {
+    if (state.mode === 'mafia') return Mafia.cardFor(i)
+    if (state.roles[i] === 'impostor') {
+      // The impostor gets no word and no category, only what they hear from others
+      return {
+        tag: 'Impostor', theme: 'red', title: "You're the impostor", small: true, sub: '',
+        help: "You don't know the word or the category. Listen, blend in, don't get caught."
+      }
+    }
+    return {
+      tag: 'Regular', theme: 'mint', title: round.word, sub: `Category: ${round.wordCategory}`,
+      help: 'Give clues about this word without saying it. Find the impostor.'
+    }
+  }
+
   function showReveal() {
     const i = state.turn
-    const isImp = state.impostorSet.has(i)
+    const c = cardFor(i)
     $('#revealName').textContent = state.names[i]
-
-    const card = $('#roleCard')
-    card.classList.remove('show')
-    card.classList.toggle('is-impostor', isImp)
-    card.classList.toggle('is-regular', !isImp)
+    $('#roleCard').className = `role-card theme-${c.theme}`
 
     const inner = $('#roleInner')
     inner.innerHTML = ''
-    if (isImp) {
-      inner.append(el('span', 'role-tag bad', 'Impostor'))
-      inner.append(el('div', 'role-word imp', "You're the impostor"))
-      // The impostor gets no word and no category, only what they hear from others
-      inner.append(el('p', 'role-help', "You don't know the word or the category. Listen, blend in, don't get caught."))
-    } else {
-      inner.append(el('span', 'role-tag ok', 'Regular'))
-      inner.append(el('div', 'role-word', state.word))
-      inner.append(el('div', 'role-sub', `Category: ${state.wordCategory}`))
-      inner.append(el('p', 'role-help', 'Give clues about this word without saying it. Find the impostor.'))
-    }
+    inner.append(el('span', `role-tag t-${c.theme}`, c.tag))
+    inner.append(el('div', `role-word t-${c.theme}${c.small ? ' small' : ''}`, c.title))
+    if (c.sub) inner.append(el('div', 'role-sub', c.sub))
+    inner.append(el('p', 'role-help', c.help))
 
     const done = $('#doneBtn')
     done.disabled = true
@@ -397,12 +377,13 @@
     setRoleVisible(false)
     state.turn++
     if (state.turn < state.names.length) showTurn()
+    else if (state.mode === 'mafia') Mafia.start()
     else showPlay()
   }
 
-  // ---------- Play and result ----------
+  // ---------- Word Impostor: play and result ----------
   function showPlay() {
-    $('#starterName').textContent = state.names[state.starter]
+    $('#starterName').textContent = state.names[round.starter]
     show('play')
   }
 
@@ -420,13 +401,13 @@
   }
 
   function showResult() {
-    const imps = state.names.filter((_, i) => state.impostorSet.has(i))
+    const imps = state.names.filter((_, i) => state.roles[i] === 'impostor')
     $('#resultLabel').textContent = imps.length > 1 ? 'The impostors were' : 'The impostor was'
     const list = $('#impList')
     list.innerHTML = ''
     imps.forEach((n) => list.append(el('div', 'imp-name', n)))
-    $('#resultWord').textContent = state.word
-    $('#resultCat').textContent = state.wordCategory
+    $('#resultWord').textContent = round.word
+    $('#resultCat').textContent = round.wordCategory
     thud()
     show('result')
   }
@@ -434,28 +415,40 @@
   // ---------- Wire up ----------
   function init() {
     load()
+    App.startRound = startRound
     buildWheel()
-    renderOptions()
-    renderPlayers()
-    renderSound()
     buildCountChips()
-    setCount(state.players.length)
+    renderCategories()
+    renderSound()
+    Mafia.init()
+
+    document.querySelectorAll('.mode-card').forEach((b) =>
+      b.addEventListener('click', () => pickMode(b.dataset.mode)))
+    $('#homeBtn').addEventListener('click', goHome)
+    $('#backToHome').addEventListener('click', () => show('home'))
 
     $('#countMinus').addEventListener('click', () => setCount(pickedCount - 1))
     $('#countPlus').addEventListener('click', () => setCount(pickedCount + 1))
     $('#countNext').addEventListener('click', confirmCount)
     $('#backToCount').addEventListener('click', () => { setCount(state.players.length); show('count') })
+
     $('#addPlayer').addEventListener('click', addPlayer)
     $('#impMinus').addEventListener('click', () => { state.impostors--; renderImpostors() })
     $('#impPlus').addEventListener('click', () => { state.impostors++; renderImpostors() })
     $('#categorySelect').addEventListener('change', (e) => { state.category = e.target.value; save() })
+    $('#mafMinus').addEventListener('click', () => { state.mafiaCount--; renderMafiaOpts() })
+    $('#mafPlus').addEventListener('click', () => { state.mafiaCount++; renderMafiaOpts() })
+    $('#docToggle').addEventListener('change', (e) => { state.doctor = e.target.checked; renderMafiaOpts() })
+    $('#detToggle').addEventListener('change', (e) => { state.detective = e.target.checked; renderMafiaOpts() })
+    $('#jesToggle').addEventListener('change', (e) => { state.jester = e.target.checked; renderMafiaOpts() })
     $('#soundBtn').addEventListener('click', () => { state.sound = !state.sound; save(); renderSound() })
     $('#startBtn').addEventListener('click', startRound)
+
     $('#spinBtn').addEventListener('click', spin)
     $('#hubBtn').addEventListener('click', spin)
     $('#doneBtn').addEventListener('click', nextPlayer)
     $('#againBtn').addEventListener('click', startRound)
-    $('#editBtn').addEventListener('click', () => show('setup'))
+    $('#editBtn').addEventListener('click', showSetup)
     document.querySelectorAll('.quit').forEach((b) => b.addEventListener('click', quitRound))
 
     bindRoleCard()

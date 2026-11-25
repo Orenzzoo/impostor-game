@@ -13,12 +13,18 @@
   --red-glow: rgba(255, 48, 72, 0.4);
   --mint: #3ee6b5;
   --mint-soft: rgba(62, 230, 181, 0.12);
+  --blue: #5b9dff;
+  --blue-soft: rgba(91, 157, 255, 0.14);
+  --purple: #b57bff;
+  --purple-soft: rgba(181, 123, 255, 0.14);
+  --gray-soft: rgba(255, 255, 255, 0.07);
   --radius: 18px;
   --font: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
   --display: 'Space Grotesk', 'Inter', system-ui, sans-serif;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
+[hidden] { display: none !important; }
 html, body { min-height: 100%; }
 
 body {
@@ -65,7 +71,10 @@ body::before {
 
 /* Header */
 .top { display: flex; align-items: center; justify-content: space-between; padding: 4px 0 18px; }
-.brand { display: flex; align-items: center; gap: 8px; font-family: var(--display); font-weight: 700; font-size: 18px; letter-spacing: 0.02em; }
+.brand {
+  display: flex; align-items: center; gap: 8px; font-family: var(--display); font-weight: 700; font-size: 18px; letter-spacing: 0.02em;
+  background: none; border: none; color: var(--text); cursor: pointer; padding: 0;
+}
 .brand .ico { color: var(--red); filter: drop-shadow(0 0 6px var(--red-glow)); }
 .icon-btn {
   width: 40px; height: 40px; border-radius: 12px;
@@ -265,20 +274,42 @@ label.row { cursor: pointer; }
 .role-inner { opacity: 0; visibility: hidden; }
 .role-card.show .role-cover { opacity: 0; }
 .role-card.show .role-inner { opacity: 1; visibility: visible; }
-.role-card.show.is-impostor {
+.role-card.show.theme-red {
   border-color: var(--red);
   background: radial-gradient(circle at 50% 40%, rgba(255, 48, 72, 0.22), var(--surface) 70%);
   box-shadow: 0 0 60px rgba(255, 48, 72, 0.25);
 }
-.role-card.show.is-regular {
+.role-card.show.theme-mint {
   border-color: rgba(62, 230, 181, 0.5);
   background: radial-gradient(circle at 50% 40%, rgba(62, 230, 181, 0.14), var(--surface) 70%);
 }
+.role-card.show.theme-blue {
+  border-color: rgba(91, 157, 255, 0.55);
+  background: radial-gradient(circle at 50% 40%, rgba(91, 157, 255, 0.16), var(--surface) 70%);
+}
+.role-card.show.theme-purple {
+  border-color: rgba(181, 123, 255, 0.55);
+  background: radial-gradient(circle at 50% 40%, rgba(181, 123, 255, 0.16), var(--surface) 70%);
+}
+.role-card.show.theme-gray { border-color: var(--border-2); }
+
+/* Role colors, shared by cards, chips and results */
+.t-red { color: var(--red); }
+.t-mint { color: var(--mint); }
+.t-blue { color: var(--blue); }
+.t-purple { color: var(--purple); }
+.t-gray { color: var(--text); }
+
 .role-tag { font-size: 12px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; padding: 5px 12px; border-radius: 99px; }
-.role-tag.ok { background: var(--mint-soft); color: var(--mint); }
-.role-tag.bad { background: var(--red-soft); color: var(--red); }
+.role-tag.t-red { background: var(--red-soft); }
+.role-tag.t-mint { background: var(--mint-soft); }
+.role-tag.t-blue { background: var(--blue-soft); }
+.role-tag.t-purple { background: var(--purple-soft); }
+.role-tag.t-gray { background: var(--gray-soft); color: var(--muted); }
 .role-word { font-family: var(--display); font-size: 40px; font-weight: 700; line-height: 1.1; word-break: break-word; }
-.role-word.imp { color: var(--red); font-size: 34px; text-shadow: 0 0 24px var(--red-glow); }
+.role-word.t-mint, .role-word.t-gray { color: var(--text); }
+.role-word.t-red { text-shadow: 0 0 24px var(--red-glow); }
+.role-word.small { font-size: 34px; }
 .role-sub { color: var(--text); font-weight: 500; opacity: 0.85; }
 .role-help { color: var(--muted); font-size: 14px; line-height: 1.5; max-width: 280px; }
 
@@ -307,3 +338,76 @@ label.row { cursor: pointer; }
 @keyframes slam { from { opacity: 0; transform: scale(1.4); } to { opacity: 1; transform: none; } }
 .word-card { text-align: center; }
 .word-card .big { color: var(--mint); }
+
+/* Game picker */
+.mode-card {
+  display: flex; align-items: flex-start; gap: 16px; width: 100%; padding: 20px;
+  text-align: left; color: var(--text); font: inherit; cursor: pointer;
+  background: linear-gradient(180deg, var(--surface-2), var(--surface));
+  border: 1px solid var(--border); border-radius: 20px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
+  transition: border-color 0.2s, box-shadow 0.2s, transform 0.1s;
+}
+.mode-card:hover { border-color: var(--red); box-shadow: 0 0 34px rgba(255, 48, 72, 0.16); }
+.mode-card[data-mode="mafia"]:hover { border-color: var(--purple); box-shadow: 0 0 34px rgba(181, 123, 255, 0.16); }
+.mode-card:active { transform: scale(0.99); }
+.mode-card h2 { font-family: var(--display); font-size: 20px; margin-bottom: 6px; }
+.mode-card p { color: var(--muted); font-size: 14px; line-height: 1.5; }
+.mode-icon {
+  width: 48px; height: 48px; border-radius: 14px; flex-shrink: 0;
+  display: grid; place-items: center; background: var(--red-soft); color: var(--red);
+}
+.mode-icon.night-icon { background: var(--purple-soft); color: var(--purple); }
+.mode-icon .ico { width: 24px; height: 24px; }
+
+/* Mafia setup */
+.summary { color: var(--muted); font-size: 14px; line-height: 1.5; }
+.error { color: var(--red); font-size: 14px; text-align: center; }
+
+/* Night */
+.narrate {
+  flex: 1; min-height: 62vh; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 24px; text-align: center;
+}
+.narrate p { font-family: var(--display); font-size: 30px; font-weight: 700; line-height: 1.2; max-width: 320px; }
+.moon { width: 56px; height: 56px; color: var(--purple); filter: drop-shadow(0 0 14px rgba(181, 123, 255, 0.5)); animation: pulse 3s ease-in-out infinite; }
+
+.pick-list { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.pick {
+  height: 52px; padding: 0 12px; border-radius: 14px; cursor: pointer;
+  background: var(--surface); border: 1px solid var(--border); color: var(--text);
+  font: 600 15px var(--font); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  transition: border-color 0.15s, background 0.15s;
+}
+.pick.on { border-color: var(--red); background: var(--red-soft); color: var(--red); box-shadow: 0 0 0 3px var(--red-soft); }
+.pick-skip { grid-column: 1 / -1; color: var(--muted); }
+.wide { grid-column: 1 / -1; padding: 20px 0; }
+
+.check { text-align: center; padding: 28px 18px; border-radius: 20px; border: 1px solid var(--border-2); background: var(--surface); }
+.check.t-red { border-color: var(--red); background: var(--red-soft); }
+.check.t-mint { border-color: rgba(62, 230, 181, 0.5); background: var(--mint-soft); }
+.check-name { font-family: var(--display); font-size: 32px; font-weight: 700; color: var(--text); word-break: break-word; }
+.check-verdict { font-size: 20px; font-weight: 700; margin-top: 6px; }
+
+/* Day */
+.center-text p.day-msg { color: var(--text); font-size: 17px; }
+.timer-card { text-align: center; }
+.timer { font-family: var(--display); font-size: 56px; font-weight: 700; margin: 4px 0 14px; font-variant-numeric: tabular-nums; }
+.timer.low { color: var(--red); }
+.timer-actions { display: flex; gap: 10px; }
+.timer-actions .btn { flex: 1; }
+
+.roster { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip {
+  display: inline-flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 99px;
+  background: var(--bg); border: 1px solid var(--border); font-size: 14px; font-weight: 500;
+}
+.chip.dead { opacity: 0.45; }
+.chip.dead .chip-name { text-decoration: line-through; }
+.chip-role { font-size: 12px; font-weight: 700; }
+
+/* Vote result and game over */
+.verdict { flex: 1; min-height: 50vh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; text-align: center; }
+.verdict-sub { font-size: 20px; font-weight: 700; }
+.over-title { font-size: 40px; }
+.over-title.t-red, .over-title.t-mint, .over-title.t-purple { text-shadow: 0 0 30px currentColor; }
