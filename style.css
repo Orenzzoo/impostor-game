@@ -229,10 +229,21 @@ label.row { cursor: pointer; }
 .wheel-wrap.spinning .light:nth-child(odd) { animation-delay: 0.25s; }
 @keyframes blink { from { fill: #3a2a30; } to { fill: var(--red); } }
 .hub { fill: var(--surface-2); stroke: var(--red); stroke-width: 2; }
+/* Clickable eye in the middle, sized to sit exactly on the SVG hub (r=34 of 300) */
+.hub-btn {
+  position: absolute; top: 50%; left: 50%; width: 22.7%; height: 22.7%;
+  transform: translate(-50%, -50%); border-radius: 50%;
+  background: transparent; border: none; cursor: pointer;
+  display: grid; place-items: center; transition: box-shadow 0.2s, transform 0.1s;
+}
+.hub-btn:hover:not(:disabled) { box-shadow: 0 0 24px var(--red-glow); }
+.hub-btn:active:not(:disabled) { transform: translate(-50%, -50%) scale(0.92); }
+.hub-btn:disabled { cursor: default; }
 .hub-icon {
-  position: absolute; top: 50%; left: 50%; width: 26px; height: 26px; margin: -13px 0 0 -13px;
+  width: 26px; height: 26px;
   color: var(--red); filter: drop-shadow(0 0 6px var(--red-glow));
 }
+.hub-btn:not(:disabled) .hub-icon { animation: pulse 2s ease-in-out infinite; }
 
 /* Role card */
 .role-card {

@@ -281,6 +281,7 @@
     const btn = $('#spinBtn')
     btn.disabled = false
     btn.textContent = 'Spin the wheel'
+    $('#hubBtn').disabled = false
 
     const dots = $('#turnDots')
     dots.innerHTML = ''
@@ -304,6 +305,7 @@
     const btn = $('#spinBtn')
     btn.disabled = true
     btn.textContent = 'Spinning...'
+    $('#hubBtn').disabled = true
     $('#wheelWrap').classList.add('spinning')
 
     const rot = $('#wheelRot')
@@ -450,6 +452,7 @@
     $('#soundBtn').addEventListener('click', () => { state.sound = !state.sound; save(); renderSound() })
     $('#startBtn').addEventListener('click', startRound)
     $('#spinBtn').addEventListener('click', spin)
+    $('#hubBtn').addEventListener('click', spin)
     $('#doneBtn').addEventListener('click', nextPlayer)
     $('#againBtn').addEventListener('click', startRound)
     $('#editBtn').addEventListener('click', () => show('setup'))
