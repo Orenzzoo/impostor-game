@@ -12,7 +12,6 @@
     players: ['', '', '', ''],
     impostors: 1,
     category: 'random',
-    hint: true,
     sound: true,
     // Per-round
     names: [],
@@ -60,15 +59,14 @@
       if (Array.isArray(s.players) && s.players.length >= MIN_PLAYERS) state.players = s.players.slice(0, MAX_PLAYERS)
       if (Number.isInteger(s.impostors)) state.impostors = s.impostors
       if (s.category === 'random' || CATEGORIES[s.category]) state.category = s.category
-      if (typeof s.hint === 'boolean') state.hint = s.hint
       if (typeof s.sound === 'boolean') state.sound = s.sound
     } catch { /* storage blocked, use defaults */ }
   }
 
   function save() {
     try {
-      const { players, impostors, category, hint, sound } = state
-      localStorage.setItem(STORE_KEY, JSON.stringify({ players, impostors, category, hint, sound }))
+      const { players, impostors, category, sound } = state
+      localStorage.setItem(STORE_KEY, JSON.stringify({ players, impostors, category, sound }))
     } catch { /* ignore */ }
   }
 
@@ -174,7 +172,6 @@
     sel.append(new Option('Random', 'random'))
     Object.keys(CATEGORIES).forEach((c) => sel.append(new Option(c, c)))
     sel.value = state.category
-    $('#hintToggle').checked = state.hint
   }
 
   // ---------- Player count ----------
@@ -356,8 +353,8 @@
     if (isImp) {
       inner.append(el('span', 'role-tag bad', 'Impostor'))
       inner.append(el('div', 'role-word imp', "You're the impostor"))
-      inner.append(el('div', 'role-sub', state.hint ? `Category: ${state.wordCategory}` : 'No hint this round'))
-      inner.append(el('p', 'role-help', "You don't know the word. Listen, blend in, don't get caught."))
+      // The impostor gets no word and no category, only what they hear from others
+      inner.append(el('p', 'role-help', "You don't know the word or the category. Listen, blend in, don't get caught."))
     } else {
       inner.append(el('span', 'role-tag ok', 'Regular'))
       inner.append(el('div', 'role-word', state.word))
@@ -450,7 +447,6 @@
     $('#impMinus').addEventListener('click', () => { state.impostors--; renderImpostors() })
     $('#impPlus').addEventListener('click', () => { state.impostors++; renderImpostors() })
     $('#categorySelect').addEventListener('change', (e) => { state.category = e.target.value; save() })
-    $('#hintToggle').addEventListener('change', (e) => { state.hint = e.target.checked; save() })
     $('#soundBtn').addEventListener('click', () => { state.sound = !state.sound; save(); renderSound() })
     $('#startBtn').addEventListener('click', startRound)
     $('#spinBtn').addEventListener('click', spin)
